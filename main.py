@@ -20,3 +20,11 @@ cities_df = airports_df.select(
     col("longitude_deg").alias("longitude"),
     col("iso_country").alias("country_code")
 ).distinct()
+itineraries_df = itineraries_df.select(
+    col("startingAirport").alias("departure_airport"),
+    col("destinationAirport").alias("arrival_airport"),
+    col("totalFare").alias("price"),
+    col("travelDuration").alias("duration"),
+    col("segmentsDepartureTimeRaw").alias("departure_time"),
+    col("segmentsArrivalTimeRaw").alias("arrival_time")
+)
