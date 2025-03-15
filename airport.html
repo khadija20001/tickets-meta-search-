@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Predictor</title>
+  <link rel="stylesheet" href="airport.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Flight Predictor</h1>
+    <p>Find the best time to fly based on your preferences.</p>
+
+    <!-- User Input Form -->
+    <div class="form-container">
+      <label for="from">From:</label>
+      <input type="text" id="from" placeholder="Enter departure airport (e.g., ATL)" required>
+
+      <label for="to">To:</label>
+      <input type="text" id="to" placeholder="Enter destination airport (e.g., BOS)" required>
+
+      <label for="time">Preferred Time:</label>
+      <input type="date" id="date" required>
+
+      <button id="predictButton">Predict Best Flight</button>
+    </div>
+
+    <!-- Prediction Result -->
+    <div id="predictionResult" class="result-container">
+      <h2>Best Flight Prediction</h2>
+      <p id="resultText">Enter your details above to see the best flight.</p>
+    </div>
+
+    <!-- Tables Section -->
+    <div class="tables-container">
+      <h2>Flight Data</h2>
+      <table id="flightsTable">
+        <thead>
+          <tr>
+            <th>Leg ID</th>
+            <th>Flight Date</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Duration</th>
+            <th>Non-Stop</th>
+            <th>Fare ($)</th>
+            <th>Distance (miles)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Flight data will be populated here by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="airtport.js"></script>
+</body>
+</html>
