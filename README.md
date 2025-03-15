@@ -1,4 +1,5 @@
 Flight Ticket Meta-Search Engine
+
 📌 Phase 1: Setup the Big Data Environment
 👉 Goal: Install & configure Hadoop, Spark, and Python to handle 32GB of flight data.
 
