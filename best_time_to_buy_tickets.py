@@ -87,7 +87,7 @@ enriched_df = itineraries_df \
         "continent"
     )
 
-
+#
 # Display enriched results
 print("Enriched Data with Airport and Country Info: ")
 z.show(enriched_df)
