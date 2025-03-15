@@ -19,8 +19,16 @@
       <label for="to">To:</label>
       <input type="text" id="to" placeholder="Enter destination airport (e.g., BOS)" required>
 
-      <label for="time">Preferred Time:</label>
+      <label for="date">Preferred Date:</label>
       <input type="date" id="date" required>
+
+      <label for="sortBy">Sort By:</label>
+      <select id="sortBy">
+        <option value="fare">Lowest Fare</option>
+        <option value="duration">Shortest Duration</option>
+        <option value="distance">Shortest Distance</option>
+        <option value="nonStop">Non-Stop Flights</option>
+      </select>
 
       <button id="predictButton">Predict Best Flight</button>
     </div>
