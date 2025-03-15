@@ -4,106 +4,120 @@ from pyspark.sql.types import IntegerType
 import re
 
 
-# UDF to convert ISO travel duration (PTxHxM) into minutes
-def conv_dur_min(duration_str):
-    h_min = re.findall(r'\d+', duration_str)
-    if h_min:
-        hours = int(h_min[0])
-        minutes = int(h_min[1]) if len(h_min) > 1 else 0
+# Custom function to parse flight duration from ISO format
+def parse_travel_duration_to_minutes(iso_duration):
+    """Converts PT1H30M format to total minutes"""
+    time_components = re.findall(r'\d+', iso_duration)
+    if time_components:
+        hours = int(time_components[0])
+        minutes = int(time_components[1]) if len(time_components) > 1 else 0
         return hours * 60 + minutes
-    return 0
+    return 0  # Default for invalid formats
 
 
-convert_duration_udf = udf(conv_dur_min, IntegerType())
+# Register our custom duration converter
+travel_time_converter = udf(parse_travel_duration_to_minutes, IntegerType())
+
+# Configure Spark for legacy date parsing
 spark.conf.set("spark.sql.legacy.timeParserPolicy", "LEGACY")
-# Use the flight_analysis database
-spark.sql("USE flight_analysis")
+spark.sql("USE flight_analysis")  # Working with our flight database
 
 
-# Function to analyze most cost-effective departure times
-def when_to_fly(departure_airport, max_travel_time):
+def find_cheapest_flight_times(home_airport_code, max_flight_duration):
     """
-    Analyzes feasible flight itineraries based on departure times
-    and enriches results with airport and country information.
+    Identifies budget-friendly flight times from a departure airport within a maximum duration.
+    Returns enriched data with destination details and pricing trends.
+
+    Parameters:
+    home_airport_code (str): IATA code for departure airport (e.g., 'JFK')
+    max_flight_duration (int): Maximum allowed travel time in minutes
     """
-    #  Load and preprocess datasets
-    # Load itineraries dataset
-    itineraries_df = spark.sql(
-        "SELECT startingAirport, destinationAirport, totalFare, travelDuration, flightdate FROM fitineraries WHERE legid != 'legId'"
-    ).na.drop(subset=["startingAirport", "destinationAirport", "totalFare", "travelDuration", "flightdate"])
+    # First, we pull the flight itineraries and clean up any missing data
+    raw_flight_data = spark.sql("""
+        SELECT startingAirport, destinationAirport, 
+               totalFare, travelDuration, flightdate 
+        FROM fitineraries 
+        WHERE legid != 'legId'  -- Filtering out invalid entries
+    """).na.drop(subset=["startingAirport", "destinationAirport",
+                         "totalFare", "travelDuration", "flightdate"])
 
-    # Load additional datasets: airports and countries
-    airports_df = spark.sql("""  
-        SELECT   
-            COALESCE(iata_code, ident) AS airportCode,  
-            name AS airportName,  
-            municipality AS city,  
-            iso_country AS countryCode,  
-            latitude_deg AS latitude,  
-            longitude_deg AS longitude  
-        FROM airports  
-    """).withColumn("airportCode", trim(regexp_replace("airportCode", '"', ''))) \
-        .withColumn("countryCode", trim(regexp_replace("countryCode", '"', '')))
+    # Airport reference data setup
+    airport_reference = spark.sql("""
+        SELECT 
+            COALESCE(iata_code, ident) AS airport_code,
+            name AS airport_name,
+            municipality AS city,
+            iso_country AS country_code,
+            latitude_deg AS latitude,
+            longitude_deg AS longitude
+        FROM airports
+    """).withColumn("airport_code", trim(regexp_replace("airport_code", '"', ''))) \
+        .withColumn("country_code", trim(regexp_replace("country_code", '"', '')))
 
-    countries_df = spark.sql("""  
-        SELECT  
-            TRIM(REGEXP_REPLACE(code, '"', '')) AS countryCode,  
-            TRIM(REGEXP_REPLACE(name, '"', '')) AS countryName,  
-            TRIM(REGEXP_REPLACE(continent, '"', '')) AS continent  
-        FROM countries  
-    """).withColumn("countryCode", trim(regexp_replace("countryCode", '"', '')))
+    # Country reference data setup
+    country_reference = spark.sql("""
+        SELECT 
+            TRIM(REGEXP_REPLACE(code, '"', '')) AS country_code,
+            TRIM(REGEXP_REPLACE(name, '"', '')) AS country_name,
+            TRIM(REGEXP_REPLACE(continent, '"', '')) AS continent
+        FROM countries
+    """).withColumn("country_code", trim(regexp_replace("country_code", '"', '')))
 
-    # SEnrich the itineraries dataset
-    enriched_df = itineraries_df \
-        .withColumn("travelDurationInMinutes", convert_duration_udf(col("travelDuration"))) \
-        .filter(col("startingAirport") == departure_airport) \
-        .filter(col("travelDurationInMinutes") <= max_travel_time)
+    # Enhance our flight data with calculated fields
+    processed_flights = raw_flight_data \
+        .withColumn("flight_duration_mins", travel_time_converter(col("travelDuration"))) \
+        .filter(col("startingAirport") == home_airport_code) \
+        .filter(col("flight_duration_mins") <= max_flight_duration) \
+        .withColumn("flight_date", to_date(col("flightdate"), "MM/dd/yyyy")) \
+        .withColumn("departure_month", month(col("flight_date"))) \
+        .withColumn("departure_weekday", dayofweek(col("flight_date")))
 
-    # Join with airports data
-    enriched_df = enriched_df \
-        .join(airports_df, enriched_df.destinationAirport == airports_df.airportCode, "left") \
-        .join(countries_df, airports_df.countryCode == countries_df.countryCode, "left") \
+    # Combine with location information
+    flights_with_locations = processed_flights \
+        .join(airport_reference,
+              processed_flights.destinationAirport == airport_reference.airport_code,
+              "left") \
+        .join(country_reference,
+              airport_reference.country_code == country_reference.country_code,
+              "left") \
         .select(
-        enriched_df["*"],
-        airports_df["airportName"],
-        airports_df["city"],
-        countries_df["countryName"],
-        countries_df["continent"]
+        processed_flights["*"],
+        airport_reference.airport_name,
+        airport_reference.city,
+        country_reference.country_name,
+        country_reference.continent
     )
 
-    #  Extract date information (month and day of the week)
-    # Use flightdate instead of departureDate
-    enriched_df = enriched_df \
-        .withColumn("flightDateFormatted", to_date(col("flightdate"), "MM/dd/yyyy")) \
-        .withColumn("month", month(col("flightDateFormatted"))) \
-        .withColumn("dayOfWeek", dayofweek(col("flightDateFormatted")))
+    # Find best prices by time patterns
+    price_analysis = flights_with_locations.groupBy(
+        "destinationAirport", "departure_weekday", "departure_month"
+    ).agg(min("totalFare").alias("minimum_fare"))
 
-    #  Group by destination, day of the week, and month
-    # Find the lowest fare for each destination by day of the week and month
-    grouped_df = enriched_df.groupBy("destinationAirport", "dayOfWeek", "month").agg(
-        min("totalFare").alias("lowestFare")
-    )
-
-    # Enrich aggregated results with airport and country information
-    result_df = grouped_df \
-        .join(airports_df, grouped_df.destinationAirport == airports_df.airportCode, "left") \
-        .join(countries_df, airports_df.countryCode == countries_df.countryCode, "left") \
+    # Final enriched results
+    travel_recommendations = price_analysis \
+        .join(airport_reference,
+              price_analysis.destinationAirport == airport_reference.airport_code,
+              "left") \
+        .join(country_reference,
+              airport_reference.country_code == country_reference.country_code,
+              "left") \
         .select(
-        grouped_df["destinationAirport"],
-        "lowestFare",
-        "airportName",
-        "dayOfWeek",
-        "month",
+        "destinationAirport",
+        "minimum_fare",
+        "airport_name",
+        "departure_weekday",
+        "departure_month",
         "city",
-        "countryName",
+        "country_name",
         "continent"
     )
-    # itineraries_df.select("flightdate").distinct().show(50, truncate=False)
-    # Display the results in Zeppelin or as a PySpark DataFrame
-    z.show(result_df)  # For Zeppelin; replace with result_df.show() if not using Zeppelin
+
+    # Show results in our notebook environment
+    z.show(travel_recommendations)
 
 
-# Example Usage
-departure_airport = "ATL"  # Example: Atlanta
-max_travel_time = 240  # Example: 4 hours (240 minutes)
-when_to_fly(departure_airport, max_travel_time)
+# Try it out for Atlanta flights under 4 hours
+find_cheapest_flight_times(
+    home_airport_code="ATL",
+    max_flight_duration=240
+)
