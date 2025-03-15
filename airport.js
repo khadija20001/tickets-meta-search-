@@ -1,0 +1,105 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  .container {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    width: 100%;
+  }
+
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+  }
+
+  p {
+    text-align: center;
+    color: #666;
+  }
+
+  /* Form Styles */
+  .form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  label {
+    font-weight: bold;
+  }
+
+  input {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+  }
+
+  button {
+    padding: 0.75rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #2980b9;
+  }
+
+  /* Result Styles */
+  .result-container {
+    background: #ecf0f1;
+    padding: 1rem;
+    border-radius: 5px;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  #resultText {
+    font-size: 1.2rem;
+    color: #2c3e50;
+  }
+
+  /* Table Styles */
+  .tables-container {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+
+  th {
+    background-color: #3498db;
+    color: white;
+  }
+
+  tr:hover {
+    background-color: #f1f1f1;
+  }
