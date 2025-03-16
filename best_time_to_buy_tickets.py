@@ -5,7 +5,7 @@
 #i import some functions to help me work with the data
 from pyspark.sql.functions import col, to_date, datediff, avg, trim, regexp_replace, lit, month, dayofweek
 from pyspark.sql import SparkSession
-
+from pyspark.sql import functions as F
 # i create a Spark session, which is like starting the engine of Spark so we can use it.
 spark = SparkSession.builder.appName("FlightDataAnalysis").getOrCreate()
 
@@ -41,6 +41,7 @@ itineraries_df = itineraries_df.withColumn("bookingDate", F.date_sub(col("flight
 itineraries_df = itineraries_df.withColumn("bookingLeadTime", datediff(col("flightDate"), col("bookingDate")))
 
 
+
 # Step 2: Clean airport data
 # i load airport data from a table called airports $ select colums
 airports_df = (
@@ -59,6 +60,7 @@ airports_df = (
 )
 
 
+
 # Step 3: Clean country data
 #i load country data from a table called countries & select columns
 countries_df = (
@@ -70,6 +72,7 @@ countries_df = (
         FROM countries
     """)
 )
+
 
 
 # Cache frequently used DataFrames for performance
@@ -103,6 +106,7 @@ monthly_fares_df = (
 #display the result of analysis average fares by month
 print("Average Fare by Month:")
 monthly_fares_df.show(12, truncate=False)
+
 
 
 # 3.  Average Fare by day of the week
